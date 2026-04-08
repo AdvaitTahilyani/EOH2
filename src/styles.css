@@ -319,6 +319,36 @@ button { font: inherit; }
   box-shadow: 0 0 0 3px rgba(103, 232, 249, 0.1);
 }
 
+.difficulty-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.difficulty-switch {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.difficulty-pill {
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 10px 14px;
+  background: var(--surface-2);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: border-color 170ms ease, background 170ms ease, color 170ms ease;
+}
+
+.difficulty-pill.active {
+  border-color: var(--border-active);
+  background: var(--cyan-dim);
+  color: var(--text);
+}
+
 /* ── Hero actions ────────────────────────────────────────── */
 
 .hero-actions {

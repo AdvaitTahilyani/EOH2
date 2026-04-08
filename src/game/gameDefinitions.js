@@ -78,6 +78,27 @@ export const gameDefinitions = [
 
 export const totalPossibleScore = gameDefinitions.length * 100;
 
+export const difficultyLevels = [
+  {
+    id: "easy",
+    label: "Easy",
+    description: "Slower patterns, lighter penalties, lower score thresholds.",
+    scoreMultiplier: 0.78,
+  },
+  {
+    id: "medium",
+    label: "Medium",
+    description: "Current baseline balancing.",
+    scoreMultiplier: 1,
+  },
+  {
+    id: "hard",
+    label: "Hard",
+    description: "Faster pacing, tighter windows, harsher penalties, higher score thresholds.",
+    scoreMultiplier: 1.26,
+  },
+];
+
 export function normalizeScore(rawScore, maxScore) {
   return Math.max(0, Math.min(100, Math.round((rawScore / maxScore) * 100)));
 }

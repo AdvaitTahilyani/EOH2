@@ -1,5 +1,5 @@
 import Phaser from "phaser";
-import { medalForScore, normalizeScore } from "./gameDefinitions";
+import { difficultyLevels, medalForScore, normalizeScore } from "./gameDefinitions";
 
 const W = 960;
 const H = 640;
@@ -54,23 +54,27 @@ export class FactoryScene extends Phaser.Scene {
 
   create() {
     if (this.pendingConfig) {
-      const { game, onComplete } = this.pendingConfig;
+      const { game, onComplete, difficulty } = this.pendingConfig;
       this.pendingConfig = null;
-      this.startGame(game, onComplete);
+      this.startGame(game, onComplete, difficulty);
     }
   }
 
-  configure(game, onComplete) {
+  configure(game, onComplete, difficulty = "medium") {
     if (this.sys?.isActive()) {
-      this.startGame(game, onComplete);
+      this.startGame(game, onComplete, difficulty);
       return;
     }
-    this.pendingConfig = { game, onComplete };
+    this.pendingConfig = { game, onComplete, difficulty };
   }
 
-  startGame(game, onComplete) {
+  startGame(game, onComplete, difficulty = "medium") {
     this.gameConfig = game;
     this.finishCallback = onComplete;
+    this.difficultyId = difficulty;
+    this.difficulty =
+      difficultyLevels.find((level) => level.id === difficulty) ??
+      difficultyLevels.find((level) => level.id === "medium");
     this.activeCleanup.forEach((fn) => fn());
     this.activeCleanup = [];
     this.children.removeAll();
@@ -117,6 +121,30 @@ export class FactoryScene extends Phaser.Scene {
     if (game.id === "thermal") this.setupThermalGame();
     if (game.id === "cores")   this.setupCoreGame();
     if (game.id === "routing") this.setupRoutingGame();
+  }
+
+  getDifficultySettings() {
+    const id = this.difficultyId ?? "medium";
+    return {
+      speedSpawnerDelay: id === "easy" ? 620 : id === "hard" ? 370 : 470,
+      speedHitWindow: id === "easy" ? 64 : id === "hard" ? 38 : 48,
+      speedPerfectWindow: id === "easy" ? 22 : id === "hard" ? 12 : 16,
+      speedTravelStep: id === "easy" ? 4.1 : id === "hard" ? 5.5 : 4.8,
+      powerSpawnDelay: id === "easy" ? 520 : id === "hard" ? 320 : 420,
+      powerDrift: id === "easy" ? 0.9 : id === "hard" ? 1.45 : 1.2,
+      powerStableReward: id === "easy" ? 14 : id === "hard" ? 10 : 12,
+      powerOverloadPenalty: id === "easy" ? 70 : id === "hard" ? 120 : 95,
+      thermalDeadlineMin: id === "easy" ? 2100 : id === "hard" ? 1450 : 1700,
+      thermalDeadlineMax: id === "easy" ? 3200 : id === "hard" ? 2150 : 2600,
+      thermalBurnPenalty: id === "easy" ? 100 : id === "hard" ? 170 : 140,
+      thermalPassiveReward: id === "easy" ? 0.46 : id === "hard" ? 0.28 : 0.38,
+      coreSpawnDelay: id === "easy" ? 980 : id === "hard" ? 620 : 760,
+      coreBacklogPenalty: id === "easy" ? 18 : id === "hard" ? 34 : 26,
+      coreMissPenalty: id === "easy" ? 50 : id === "hard" ? 92 : 70,
+      routingHazardPenalty: id === "easy" ? 85 : id === "hard" ? 145 : 110,
+      routingCompletionBonus: id === "easy" ? 520 : id === "hard" ? 410 : 460,
+      scoreMultiplier: this.difficulty?.scoreMultiplier ?? 1,
+    };
   }
 
   // ── Background ─────────────────────────────────────────────────────────────
@@ -284,6 +312,7 @@ export class FactoryScene extends Phaser.Scene {
   // ── Speed Game ─────────────────────────────────────────────────────────────
 
   setupSpeedGame() {
+    const d = this.getDifficultySettings();
     this.speedHits = 0;
     this.speedPerfect = 0;
     this.speedMisses = 0;
@@ -359,7 +388,7 @@ export class FactoryScene extends Phaser.Scene {
     });
 
     this.speedSpawner = this.time.addEvent({
-      delay: 470,
+      delay: d.speedSpawnerDelay,
       loop: true,
       callback: () => {
         const lane = Phaser.Math.Between(0, 2);
@@ -398,7 +427,8 @@ export class FactoryScene extends Phaser.Scene {
       }
     });
 
-    if (!bestPacket || bestDistance > 48) {
+    const d = this.getDifficultySettings();
+    if (!bestPacket || bestDistance > d.speedHitWindow) {
       this.combo = 0;
       this.speedMisses += 1;
       this.score = Math.max(0, this.score - 35);
@@ -411,8 +441,8 @@ export class FactoryScene extends Phaser.Scene {
       return;
     }
 
-    const perfect = bestDistance <= 16;
-    const great = bestDistance <= 28;
+    const perfect = bestDistance <= d.speedPerfectWindow;
+    const great = bestDistance <= d.speedPerfectWindow + 12;
     const base = perfect ? 115 : great ? 75 : 42;
     const scoreColor = perfect ? "#4ade80" : great ? "#67e8f9" : "#ffd166";
 
@@ -442,6 +472,7 @@ export class FactoryScene extends Phaser.Scene {
   // ── Power Game ─────────────────────────────────────────────────────────────
 
   setupPowerGame() {
+    const d = this.getDifficultySettings();
     this.powerStats = { goodCatch: 0, badCatch: 0, stableTicks: 0, overloads: 0 };
     this.powerState = { level: 52, combo: 0 };
 
@@ -526,7 +557,7 @@ export class FactoryScene extends Phaser.Scene {
     });
 
     this.powerSpawner = this.time.addEvent({
-      delay: 420,
+      delay: d.powerSpawnDelay,
       loop: true,
       callback: () => {
         const laneX = Phaser.Utils.Array.GetRandom(lanes);
@@ -544,7 +575,7 @@ export class FactoryScene extends Phaser.Scene {
       delay: 120,
       loop: true,
       callback: () => {
-        this.powerState.level = clamp(this.powerState.level - 1.2, 0, 100);
+        this.powerState.level = clamp(this.powerState.level - d.powerDrift, 0, 100);
         this.powerSparks.forEach((spark) => {
           spark.y += 10;
 
@@ -580,13 +611,13 @@ export class FactoryScene extends Phaser.Scene {
         if (this.powerState.level >= 85 || this.powerState.level <= 15) {
           this.powerStats.overloads += 1;
           this.powerState.combo = 0;
-          this.score = Math.max(0, this.score - 95);
+          this.score = Math.max(0, this.score - d.powerOverloadPenalty);
           this.powerState.level = clamp(this.powerState.level, 8, 92);
           this.cameras.main.shake(90, 0.003);
           this.updateHud();
         } else if (this.powerState.level >= 42 && this.powerState.level <= 68) {
           this.powerStats.stableTicks += 1;
-          this.score += 12;
+          this.score += d.powerStableReward;
           this.updateHud();
         }
 
@@ -624,6 +655,7 @@ export class FactoryScene extends Phaser.Scene {
   // ── Thermal Game ───────────────────────────────────────────────────────────
 
   setupThermalGame() {
+    const d = this.getDifficultySettings();
     this.thermalCells = [];
     this.thermalStats = { cools: 0, burnouts: 0, prestart: true };
     const cols = 5;
@@ -676,7 +708,7 @@ export class FactoryScene extends Phaser.Scene {
       const cell = Phaser.Utils.Array.GetRandom(candidates);
       cell.active = true;
       cell.heat = 100;
-      cell.deadline = this.time.now + Phaser.Math.Between(1700, 2600);
+      cell.deadline = this.time.now + Phaser.Math.Between(d.thermalDeadlineMin, d.thermalDeadlineMax);
       this.refreshThermalCell(cell);
     };
 
@@ -730,7 +762,7 @@ export class FactoryScene extends Phaser.Scene {
               cell.active = false;
               cell.burnedOut = true;
               this.thermalStats.burnouts += 1;
-              this.score = Math.max(0, this.score - 140);
+              this.score = Math.max(0, this.score - d.thermalBurnPenalty);
               this.cameras.main.shake(120, 0.003);
             }
           }
@@ -745,7 +777,7 @@ export class FactoryScene extends Phaser.Scene {
         }
 
         const saved = this.thermalCells.filter((c) => !c.burnedOut).length;
-        this.score += Math.max(2, Math.round(saved * 0.38));
+        this.score += Math.max(1, Math.round(saved * d.thermalPassiveReward));
         this.updateHud();
       },
     });
@@ -820,6 +852,7 @@ export class FactoryScene extends Phaser.Scene {
   // ── Core Game ──────────────────────────────────────────────────────────────
 
   setupCoreGame() {
+    const d = this.getDifficultySettings();
     this.coreStats = { matches: 0, misses: 0 };
     this.coreTasks = [];
 
@@ -930,7 +963,7 @@ export class FactoryScene extends Phaser.Scene {
     };
 
     this.coreSpawner = this.time.addEvent({
-      delay: 760,
+      delay: d.coreSpawnDelay,
       loop: true,
       callback: () => { if (this.coreTasks.length < 8) spawnTask(); },
     });
@@ -942,7 +975,7 @@ export class FactoryScene extends Phaser.Scene {
       callback: () => {
         const backlog = this.coreTasks.length;
         if (backlog >= 4) {
-          this.score = Math.max(0, this.score - backlog * 26);
+          this.score = Math.max(0, this.score - backlog * d.coreBacklogPenalty);
           this.updateHud();
         }
       },
@@ -975,7 +1008,7 @@ export class FactoryScene extends Phaser.Scene {
         duration: 220,
         ease: "Back.out",
       });
-      this.score = Math.max(0, this.score - 70);
+      this.score = Math.max(0, this.score - this.getDifficultySettings().coreMissPenalty);
       this.updateHud();
     }
   }
@@ -1065,6 +1098,7 @@ export class FactoryScene extends Phaser.Scene {
   }
 
   completeRoute() {
+    const d = this.getDifficultySettings();
     let pathLength = 0;
     for (let i = 1; i < this.routePoints.length; i++) {
       pathLength += Phaser.Math.Distance.BetweenPoints(this.routePoints[i - 1], this.routePoints[i]);
@@ -1079,8 +1113,8 @@ export class FactoryScene extends Phaser.Scene {
         : this.routeStats.hazards;
 
     const routeBonus = Math.round(980 * ratio);
-    const completionBonus = 460;
-    const hazardPenalty = roundHazards * 110;
+    const completionBonus = d.routingCompletionBonus;
+    const hazardPenalty = roundHazards * d.routingHazardPenalty;
     const roundScore = Math.max(240, completionBonus + routeBonus - hazardPenalty);
     this.score += roundScore;
     this.updateHud();
@@ -1242,6 +1276,7 @@ export class FactoryScene extends Phaser.Scene {
     if (this.gameConfig.id === "speed") {
       this.speedPackets.forEach((packet) => {
         packet.y += 4.8;
+        packet.y += this.getDifficultySettings().speedTravelStep - 4.8;
         if (packet.glowObj) packet.glowObj.y = packet.y;
       });
       const missed = this.speedPackets.filter((p) => p.y > 620);
@@ -1264,6 +1299,7 @@ export class FactoryScene extends Phaser.Scene {
     if (this.finished) return;
     this.finished = true;
     this.timerEvent?.destroy();
+    const d = this.getDifficultySettings();
 
     if (this.gameConfig.id === "speed") {
       const accuracy = this.speedHits
@@ -1300,7 +1336,10 @@ export class FactoryScene extends Phaser.Scene {
     }
 
     this.score = Math.max(0, Math.round(this.score));
-    const normalized = normalizeScore(this.score, this.gameConfig.maxScore);
+    const normalized = normalizeScore(
+      this.score,
+      Math.round(this.gameConfig.maxScore * d.scoreMultiplier),
+    );
     this.time.delayedCall(500, () => {
       this.finishCallback({
         id: this.gameConfig.id,
@@ -1309,6 +1348,8 @@ export class FactoryScene extends Phaser.Scene {
         normalized,
         medal: medalForScore(normalized),
         statLabel: this.statLabel || this.gameConfig.metric,
+        difficultyId: this.difficultyId,
+        difficultyLabel: this.difficulty?.label ?? "Medium",
       });
     });
   }

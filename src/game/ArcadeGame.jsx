@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import Phaser from "phaser";
+import { difficultyLevels } from "./gameDefinitions";
 import { FactoryScene } from "./FactoryScene";
 
-export function ArcadeGame({ game, onComplete }) {
+export function ArcadeGame({ game, difficulty, onComplete }) {
   const hostRef = useRef(null);
   const gameRef = useRef(null);
   const sceneRef = useRef(null);
@@ -56,9 +57,12 @@ export function ArcadeGame({ game, onComplete }) {
 
   useEffect(() => {
     if (!readyToStart || !sceneRef.current) return;
-    sceneRef.current.configure(game, onComplete);
+    sceneRef.current.configure(game, onComplete, difficulty);
     gameRef.current?.scale.refresh();
-  }, [game, onComplete, readyToStart]);
+  }, [difficulty, game, onComplete, readyToStart]);
+
+  const difficultyLabel =
+    difficultyLevels.find((level) => level.id === difficulty)?.label ?? "Medium";
 
   return (
     <section className="screen-card game-card">
@@ -72,6 +76,7 @@ export function ArcadeGame({ game, onComplete }) {
             <div className="game-splash-meta">
               <span>{game.metric}</span>
               <span>{game.durationLabel}</span>
+              <span>{difficultyLabel}</span>
             </div>
             <p className="game-splash-rules">{game.instructions}</p>
             <button className="primary-button" onClick={() => setReadyToStart(true)}>

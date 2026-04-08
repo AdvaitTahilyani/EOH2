@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { ArcadeGame } from "./game/ArcadeGame";
-import { gameDefinitions } from "./game/gameDefinitions";
+import { difficultyLevels, gameDefinitions } from "./game/gameDefinitions";
 
 const leaderboardKey = "semiconductor-arcade-leaderboard";
 
@@ -28,6 +28,8 @@ function IntroScreen({
   onNameChange,
   onStartRun,
   onStartSingle,
+  difficulty,
+  onDifficultyChange,
   leaderboard,
   resetPassword,
   onResetPasswordChange,
@@ -55,6 +57,21 @@ function IntroScreen({
           onChange={(event) => onNameChange(event.target.value)}
           placeholder="Player"
         />
+      </div>
+
+      <div className="difficulty-row">
+        <span className="name-label">Difficulty</span>
+        <div className="difficulty-switch">
+          {difficultyLevels.map((level) => (
+            <button
+              key={level.id}
+              className={`difficulty-pill ${difficulty === level.id ? "active" : ""}`}
+              onClick={() => onDifficultyChange(level.id)}
+            >
+              {level.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       <div className="hero-actions">
@@ -167,6 +184,10 @@ function ResultScreen({ game, result, onNext, nextLabel }) {
           <span>Factory Rank</span>
           <strong>{result.medal}</strong>
         </div>
+        <div className="result-box">
+          <span>Difficulty</span>
+          <strong>{result.difficultyLabel}</strong>
+        </div>
       </div>
       <button className="primary-button" onClick={onNext}>
         {nextLabel}
@@ -225,6 +246,7 @@ export default function App() {
     gameDefinitions.map((game) => game.id),
   );
   const [playerName, setPlayerName] = useState("Player");
+  const [difficulty, setDifficulty] = useState("medium");
   const [leaderboard, setLeaderboard] = useState([]);
   const [resetPassword, setResetPassword] = useState("");
   const [resetError, setResetError] = useState("");
@@ -238,6 +260,8 @@ export default function App() {
     [selectedGameIds],
   );
   const currentGame = selectedGames[currentIndex];
+  const difficultyLabel =
+    difficultyLevels.find((level) => level.id === difficulty)?.label ?? "Medium";
   const currentResult = useMemo(
     () => results.find((item) => item.id === currentGame?.id),
     [currentGame, results],
@@ -251,7 +275,7 @@ export default function App() {
       {
         name: playerName.trim() || "Player",
         score: total,
-        label,
+        label: `${label} • ${difficultyLabel}`,
         date: new Date().toISOString(),
       },
       ...loadLeaderboard(),
@@ -354,6 +378,8 @@ export default function App() {
           onNameChange={setPlayerName}
           onStartRun={handleStartRun}
           onStartSingle={handleStartSingle}
+          difficulty={difficulty}
+          onDifficultyChange={setDifficulty}
           leaderboard={leaderboard}
           resetPassword={resetPassword}
           onResetPasswordChange={(value) => {
@@ -377,7 +403,11 @@ export default function App() {
             </div>
             <p className="hint-copy">{currentGame.instructions}</p>
           </aside>
-          <ArcadeGame game={currentGame} onComplete={handleGameComplete} />
+          <ArcadeGame
+            game={currentGame}
+            difficulty={difficulty}
+            onComplete={handleGameComplete}
+          />
         </section>
       ) : null}
 
