@@ -1690,7 +1690,6 @@ export class FactoryScene extends Phaser.Scene {
       const accuracy = this.speedHits
         ? Math.round((this.speedPerfect / this.speedHits) * 100)
         : 0;
-      this.score = Math.max(0, this.score - this.speedMisses * 90);
       this.statLabel = `${this.speedHits} hits, ${accuracy}% perfect, ${this.speedMisses} misses`;
     }
 
