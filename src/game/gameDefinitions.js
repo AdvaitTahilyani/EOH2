@@ -8,8 +8,8 @@ export const gameDefinitions = [
     instructions:
       "Trigger the matching lane as packets enter the timing window. Consistent timing raises throughput and score.",
     metric: "Probe Throughput",
-    duration: 35,
-    durationLabel: "35s round",
+    duration: 20,
+    durationLabel: "20s round",
     previewVideo: "/videos/speed-preview.mp4",
     maxScore: 5600,
     linkText:
@@ -24,8 +24,8 @@ export const gameDefinitions = [
     instructions:
       "Catch valid (green) events, avoid overload (red) events, and hold the battery in the safe operating window.",
     metric: "Power Stability",
-    duration: 30,
-    durationLabel: "30s round",
+    duration: 20,
+    durationLabel: "20s round",
     previewVideo: "/videos/power-preview.mp4",
     maxScore: 5200,
     linkText:
@@ -40,8 +40,8 @@ export const gameDefinitions = [
     instructions:
       "Clear active hotspots before timeout. Burned-out cells lock and reduce reliability score.",
     metric: "Thermal Control",
-    duration: 32,
-    durationLabel: "32s round",
+    duration: 20,
+    durationLabel: "20s round",
     previewVideo: "/videos/thermal-preview.mp4",
     maxScore: 6200,
     linkText:
@@ -56,8 +56,8 @@ export const gameDefinitions = [
     instructions:
       "Route each workload to the matching core target. Queue backlog and misroutes reduce performance.",
     metric: "Core Utilization",
-    duration: 35,
-    durationLabel: "35s round",
+    duration: 20,
+    durationLabel: "20s round",
     previewVideo: "/videos/cores-preview.mp4",
     maxScore: 4600,
     linkText:
@@ -72,8 +72,8 @@ export const gameDefinitions = [
     instructions:
       "Complete as many START-to-END routes as possible in 30 seconds. Short paths with fewer hazard contacts score best.",
     metric: "Signal Integrity",
-    duration: 30,
-    durationLabel: "30s endless",
+    duration: 20,
+    durationLabel: "20s round",
     previewVideo: "/videos/routing-preview.mp4",
     maxScore: 4200,
     linkText:
@@ -88,8 +88,8 @@ export const gameDefinitions = [
     instructions:
       "Read the failing coordinate, type row/column values, then press Space to confirm. Fast, accurate logs score best.",
     metric: "Fault Logging",
-    duration: 34,
-    durationLabel: "34s round",
+    duration: 20,
+    durationLabel: "20s round",
     previewVideo: "/videos/scan-preview.mp4",
     maxScore: 5600,
     linkText:
