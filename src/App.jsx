@@ -68,6 +68,47 @@ function saveLeaderboardForDifficulty(difficultyId, entries) {
   saveLeaderboardStore(store);
 }
 
+function mergeLeaderboardStores(currentStore, importedStore) {
+  const merged = emptyLeaderboardStore();
+
+  difficultyLevels.forEach((level) => {
+    const combined = [
+      ...(currentStore[level.id] ?? []),
+      ...(importedStore[level.id] ?? []),
+    ];
+
+    const groupedByMode = combined.reduce((accumulator, entry) => {
+      const mode = leaderboardModeForEntry(entry);
+      if (!accumulator[mode]) accumulator[mode] = [];
+      accumulator[mode].push(entry);
+      return accumulator;
+    }, {});
+
+    merged[level.id] = Object.values(groupedByMode)
+      .flatMap((entries) =>
+        entries
+          .sort((a, b) => {
+            if (b.score !== a.score) return b.score - a.score;
+            return new Date(b.date ?? 0).getTime() - new Date(a.date ?? 0).getTime();
+          })
+          .filter(
+            (entry, index, array) =>
+              array.findIndex(
+                (candidate) =>
+                  candidate.name === entry.name &&
+                  candidate.score === entry.score &&
+                  candidate.date === entry.date &&
+                  leaderboardModeForEntry(candidate) === leaderboardModeForEntry(entry),
+              ) === index,
+          )
+          .slice(0, 10),
+      )
+      .sort((a, b) => b.score - a.score);
+  });
+
+  return merged;
+}
+
 function leaderboardModeForGames(games) {
   return games.length === 1 ? games[0].id : fullRunLeaderboardMode;
 }
@@ -164,7 +205,10 @@ function IntroScreen({
   resetPassword,
   onResetPasswordChange,
   onClearLeaderboard,
+  onExportLeaderboard,
+  onImportLeaderboard,
   resetError,
+  importMessage,
 }) {
   return (
     <section className="screen-card hero-card">
@@ -253,6 +297,12 @@ function IntroScreen({
               </div>
             </div>
             <div className="reset-panel">
+              <button className="secondary-button reset-button" onClick={onExportLeaderboard}>
+                Export
+              </button>
+              <button className="secondary-button reset-button" onClick={onImportLeaderboard}>
+                Import
+              </button>
               <input
                 className="reset-input"
                 type="password"
@@ -266,6 +316,7 @@ function IntroScreen({
             </div>
           </div>
           {resetError ? <p className="reset-error">{resetError}</p> : null}
+          {importMessage ? <p className="import-message">{importMessage}</p> : null}
           <div className="leaderboard-list">
             {leaderboard.length ? (
               leaderboard.map((entry, index) => (
@@ -393,7 +444,9 @@ export default function App() {
   const [leaderboardFilter, setLeaderboardFilter] = useState(fullRunLeaderboardMode);
   const [resetPassword, setResetPassword] = useState("");
   const [resetError, setResetError] = useState("");
+  const [importMessage, setImportMessage] = useState("");
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const importInputRef = useRef(null);
 
   useEffect(() => {
     setLeaderboard(loadLeaderboardForDifficulty(difficulty));
@@ -604,6 +657,50 @@ export default function App() {
     setResetError("");
   };
 
+  const handleExportLeaderboard = () => {
+    const payload = {
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      leaderboard: loadLeaderboardStore(),
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], {
+      type: "application/json",
+    });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `semiconductor-arcade-leaderboard-${new Date()
+      .toISOString()
+      .slice(0, 10)}.json`;
+    link.click();
+    URL.revokeObjectURL(url);
+    setImportMessage("Leaderboard exported.");
+  };
+
+  const handleImportLeaderboardClick = () => {
+    importInputRef.current?.click();
+  };
+
+  const handleImportLeaderboardFile = async (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+
+    try {
+      const rawText = await file.text();
+      const parsed = JSON.parse(rawText);
+      const importedStore = normalizeLeaderboardStore(parsed?.leaderboard ?? parsed);
+      const mergedStore = mergeLeaderboardStores(loadLeaderboardStore(), importedStore);
+      saveLeaderboardStore(mergedStore);
+      setLeaderboard(mergedStore[difficulty] ?? []);
+      setImportMessage("Leaderboard imported and merged.");
+      setResetError("");
+    } catch {
+      setImportMessage("");
+      setResetError("Import failed. Use a valid leaderboard JSON export.");
+    }
+  };
+
   const toggleFullscreen = async () => {
     try {
       if (!document.fullscreenElement) {
@@ -631,6 +728,13 @@ export default function App() {
       >
         {isFullscreen ? "Exit Fullscreen" : "Fullscreen"}
       </button>
+      <input
+        ref={importInputRef}
+        type="file"
+        accept="application/json,.json"
+        hidden
+        onChange={handleImportLeaderboardFile}
+      />
       <div className="ambient ambient-left" ref={ambientLeftRef} />
       <div className="ambient ambient-right" ref={ambientRightRef} />
 
@@ -664,9 +768,13 @@ export default function App() {
               onResetPasswordChange={(value) => {
                 setResetPassword(value);
                 if (resetError) setResetError("");
+                if (importMessage) setImportMessage("");
               }}
               onClearLeaderboard={handleClearLeaderboard}
+              onExportLeaderboard={handleExportLeaderboard}
+              onImportLeaderboard={handleImportLeaderboardClick}
               resetError={resetError}
+              importMessage={importMessage}
             />
           }
         />

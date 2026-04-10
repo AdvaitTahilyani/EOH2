@@ -636,6 +636,13 @@ input {
   font-weight: 700;
 }
 
+.import-message {
+  margin: 0 0 8px;
+  color: var(--mint);
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
 .leaderboard-list {
   display: grid;
   gap: 6px;
