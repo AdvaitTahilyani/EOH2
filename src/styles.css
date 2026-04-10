@@ -652,6 +652,20 @@ input {
   padding: 8px;
 }
 
+.leaderboard-player {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.leaderboard-difficulty {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
 .leaderboard-row:nth-child(1) {
   border-color: #7f6a2a;
 }

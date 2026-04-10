@@ -80,6 +80,16 @@ function leaderboardModeForEntry(entry) {
   return matchedGame?.id ?? fullRunLeaderboardMode;
 }
 
+function leaderboardDifficultyLabel(entry, fallbackDifficultyLabel) {
+  if (typeof entry?.difficultyLabel === "string" && entry.difficultyLabel) {
+    return entry.difficultyLabel;
+  }
+
+  const label = typeof entry?.label === "string" ? entry.label : "";
+  const matchedDifficulty = difficultyLevels.find((level) => label.includes(level.label));
+  return matchedDifficulty?.label ?? fallbackDifficultyLabel;
+}
+
 function rankForTotal(total, gamesCount) {
   const averagePerGame = total / Math.max(1, gamesCount);
   if (averagePerGame >= 125) return "Superchip";
@@ -264,7 +274,12 @@ function IntroScreen({
                   key={`${entry.name}-${entry.score}-${entry.date}-${index}`}
                 >
                   <div className="leaderboard-rank">{index + 1}</div>
-                  <span>{entry.name}</span>
+                  <div className="leaderboard-player">
+                    <span>{entry.name}</span>
+                    <span className="leaderboard-difficulty">
+                      {leaderboardDifficultyLabel(entry, difficultyLabel)}
+                    </span>
+                  </div>
                   <span className="leaderboard-score">{entry.score}</span>
                 </div>
               ))
@@ -515,6 +530,8 @@ export default function App() {
         name: playerName.trim() || "Player",
         score: total,
         label: `${label} - ${difficultyLabel}`,
+        difficultyId: difficulty,
+        difficultyLabel,
         mode,
         date: new Date().toISOString(),
       },
