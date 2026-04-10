@@ -121,6 +121,7 @@ export class FactoryScene extends Phaser.Scene {
     if (game.id === "thermal") this.setupThermalGame();
     if (game.id === "cores")   this.setupCoreGame();
     if (game.id === "routing") this.setupRoutingGame();
+    if (game.id === "scan")    this.setupScanGame();
   }
 
   getDifficultySettings() {
@@ -155,6 +156,11 @@ export class FactoryScene extends Phaser.Scene {
       routingHazardsPerRound: id === "easy" ? 1 : id === "hard" ? 5.1 : 2,
       routingHazardRadiusScale: id === "easy" ? 1 : id === "hard" ? 1.42 : 1.28,
       routingRoundMinScore: id === "easy" ? 240 : id === "hard" ? 40 : 90,
+      scanRows: id === "easy" ? 6 : id === "hard" ? 8 : 7,
+      scanCols: id === "easy" ? 6 : id === "hard" ? 8 : 7,
+      scanTargetWindowMs: id === "easy" ? 4200 : id === "hard" ? 2300 : 3200,
+      scanWrongPenalty: id === "easy" ? 46 : id === "hard" ? 92 : 68,
+      scanTimeoutPenalty: id === "easy" ? 70 : id === "hard" ? 130 : 95,
       scoreMultiplier: this.difficulty?.scoreMultiplier ?? 1,
     };
   }
@@ -1357,6 +1363,297 @@ export class FactoryScene extends Phaser.Scene {
     this.routeInfo.setText("30s sprint: draw S to E repeatedly • avoid red hazards");
   }
 
+  // Scan Chain Fault Map
+  setupScanGame() {
+    const d = this.getDifficultySettings();
+    this.scanRows = d.scanRows;
+    this.scanCols = d.scanCols;
+    this.scanTargetWindowMs = d.scanTargetWindowMs;
+    this.scanStats = { correct: 0, wrong: 0, timeouts: 0, resolved: 0, bestStreak: 0 };
+    this.scanInput = { row: "", col: "", field: "row" };
+    this.scanCurrentTarget = null;
+    this.scanTimerWidth = 230;
+
+    const board = { x: 380, y: 170, w: 500, h: 400 };
+    this.scanBoard = board;
+    this.scanCellW = board.w / this.scanCols;
+    this.scanCellH = board.h / this.scanRows;
+
+    const panel = this.add.graphics();
+    panel.fillStyle(C.surface, 0.9);
+    panel.fillRoundedRect(board.x, board.y, board.w, board.h, 12);
+    panel.lineStyle(1, C.border, 1);
+    panel.strokeRoundedRect(board.x, board.y, board.w, board.h, 12);
+
+    const grid = this.add.graphics();
+    for (let row = 0; row <= this.scanRows; row += 1) {
+      const y = board.y + row * this.scanCellH;
+      grid.lineStyle(1, C.border, row === 0 || row === this.scanRows ? 0.95 : 0.55);
+      grid.lineBetween(board.x, y, board.x + board.w, y);
+    }
+    for (let col = 0; col <= this.scanCols; col += 1) {
+      const x = board.x + col * this.scanCellW;
+      grid.lineStyle(1, C.border, col === 0 || col === this.scanCols ? 0.95 : 0.55);
+      grid.lineBetween(x, board.y, x, board.y + board.h);
+    }
+
+    for (let row = 1; row <= this.scanRows; row += 1) {
+      const y = board.y + (row - 0.5) * this.scanCellH;
+      this.add.text(board.x - 28, y, `${row}`, {
+        fontFamily: FONT, fontSize: "12px", fontStyle: "bold", color: "#7ca8c4",
+      }).setOrigin(0.5);
+    }
+    for (let col = 1; col <= this.scanCols; col += 1) {
+      const x = board.x + (col - 0.5) * this.scanCellW;
+      this.add.text(x, board.y - 22, `${col}`, {
+        fontFamily: FONT, fontSize: "12px", fontStyle: "bold", color: "#7ca8c4",
+      }).setOrigin(0.5);
+    }
+
+    this.add.text(board.x - 28, board.y - 22, "R/C", {
+      fontFamily: FONT, fontSize: "10px", fontStyle: "bold", color: "#4a7a9b",
+      letterSpacing: 1,
+    }).setOrigin(0.5);
+
+    this.scanPromptText = this.add.text(44, 112, "ATE FAIL: R- C-", {
+      fontFamily: FONT, fontSize: "24px", fontStyle: "bold", color: "#f87171",
+      stroke: "#050d17", strokeThickness: 3,
+    });
+    this.scanInputText = this.add.text(44, 142, "INPUT: R_ C_", {
+      fontFamily: FONT, fontSize: "18px", fontStyle: "bold", color: "#e8f4ff",
+    });
+    this.scanHintText = this.add.text(44, 168, "", {
+      fontFamily: FONT, fontSize: "12px", fontStyle: "bold", color: "#7ca8c4",
+      letterSpacing: 1,
+    });
+    this.scanFeedbackText = this.add.text(44, 198, "", {
+      fontFamily: FONT, fontSize: "15px", fontStyle: "bold", color: "#67e8f9",
+      stroke: "#050d17", strokeThickness: 3,
+    });
+
+    const timerX = 44;
+    this.add.text(timerX, 226, "FAULT TIMER", {
+      fontFamily: FONT, fontSize: "10px", fontStyle: "bold", color: "#4a7a9b",
+      letterSpacing: 2,
+    });
+    this.scanTimerTrack = this.add
+      .rectangle(timerX, 254, this.scanTimerWidth, 16, C.bg)
+      .setOrigin(0, 0.5);
+    this.scanTimerFill = this.add
+      .rectangle(timerX, 254, this.scanTimerWidth, 16, C.cyan)
+      .setOrigin(0, 0.5);
+    this.add.rectangle(timerX + this.scanTimerWidth / 2, 254, this.scanTimerWidth, 16, C.border, 0)
+      .setStrokeStyle(1, C.border, 1);
+
+    this.scanTargetGlow = this.add
+      .rectangle(0, 0, this.scanCellW + 8, this.scanCellH + 8, C.danger, 0.1)
+      .setBlendMode(Phaser.BlendModes.ADD)
+      .setVisible(false);
+    this.scanTargetCell = this.add
+      .rectangle(0, 0, this.scanCellW - 6, this.scanCellH - 6, C.danger, 0.22)
+      .setVisible(false);
+
+    this.scanPulseTween = this.tweens.add({
+      targets: [this.scanTargetGlow, this.scanTargetCell],
+      alpha: { from: 0.1, to: 0.35 },
+      duration: 380,
+      yoyo: true,
+      repeat: -1,
+      paused: true,
+    });
+
+    const onKeyDown = (event) => {
+      if (this.finished || !this.scanCurrentTarget) return;
+
+      if (event.code === "Space" || event.code === "Enter") {
+        event.preventDefault();
+        this.submitScanEntry();
+        return;
+      }
+
+      if (event.code === "Backspace" || event.code === "Delete") {
+        event.preventDefault();
+        if (this.scanInput.col) {
+          this.scanInput.col = "";
+          this.scanInput.field = "col";
+        } else if (this.scanInput.row) {
+          this.scanInput.row = "";
+          this.scanInput.field = "row";
+        }
+        this.refreshScanInputText();
+        return;
+      }
+
+      const digit = this.getScanDigitFromEvent(event);
+      if (!digit) return;
+
+      if (this.scanInput.field === "row") {
+        if (digit > this.scanRows) return;
+        this.scanInput.row = `${digit}`;
+        this.scanInput.field = "col";
+      } else {
+        if (digit > this.scanCols) return;
+        this.scanInput.col = `${digit}`;
+      }
+      this.refreshScanInputText();
+    };
+
+    this.input.keyboard?.on("keydown", onKeyDown);
+
+    this.scanLoop = this.time.addEvent({
+      delay: 60,
+      loop: true,
+      callback: () => this.updateScanTimer(),
+    });
+
+    this.activeCleanup.push(() => this.input.keyboard?.off("keydown", onKeyDown));
+    this.activeCleanup.push(() => this.scanLoop?.destroy());
+    this.activeCleanup.push(() => this.scanPulseTween?.remove());
+    this.activeCleanup.push(() => this.scanFeedbackTween?.remove());
+
+    this.refreshScanInputText();
+    this.spawnNextScanTarget(true);
+  }
+
+  getScanDigitFromEvent(event) {
+    const codeMap = {
+      Digit1: 1, Digit2: 2, Digit3: 3, Digit4: 4,
+      Digit5: 5, Digit6: 6, Digit7: 7, Digit8: 8,
+      Numpad1: 1, Numpad2: 2, Numpad3: 3, Numpad4: 4,
+      Numpad5: 5, Numpad6: 6, Numpad7: 7, Numpad8: 8,
+    };
+    if (codeMap[event.code]) return codeMap[event.code];
+    const parsed = Number.parseInt(event.key, 10);
+    if (Number.isNaN(parsed)) return null;
+    return parsed >= 1 && parsed <= 8 ? parsed : null;
+  }
+
+  refreshScanInputText() {
+    const row = this.scanInput.row || "_";
+    const col = this.scanInput.col || "_";
+    this.scanInputText.setText(`INPUT: R${row} C${col}`);
+    if (this.scanInput.field === "row") {
+      this.scanHintText.setText(`Type row (1-${this.scanRows}), then column, then SPACE`);
+    } else {
+      this.scanHintText.setText(`Type column (1-${this.scanCols}), then SPACE to confirm`);
+    }
+  }
+
+  spawnNextScanTarget(initial = false) {
+    const previous = this.scanCurrentTarget;
+    let row = Phaser.Math.Between(1, this.scanRows);
+    let col = Phaser.Math.Between(1, this.scanCols);
+
+    if (this.scanRows * this.scanCols > 1 && previous) {
+      let attempts = 0;
+      while (row === previous.row && col === previous.col && attempts < 20) {
+        row = Phaser.Math.Between(1, this.scanRows);
+        col = Phaser.Math.Between(1, this.scanCols);
+        attempts += 1;
+      }
+    }
+
+    this.scanCurrentTarget = {
+      row,
+      col,
+      startedAt: this.time.now,
+      expiresAt: this.time.now + this.scanTargetWindowMs,
+    };
+
+    const cx = this.scanBoard.x + (col - 0.5) * this.scanCellW;
+    const cy = this.scanBoard.y + (row - 0.5) * this.scanCellH;
+    this.scanTargetGlow.setPosition(cx, cy).setVisible(true);
+    this.scanTargetCell.setPosition(cx, cy).setVisible(true);
+    this.scanPulseTween.restart();
+
+    this.scanPromptText.setText(`ATE FAIL: R${row} C${col}`);
+    this.scanInput = { row: "", col: "", field: "row" };
+    this.refreshScanInputText();
+
+    if (!initial) this.scanTimerFill.width = this.scanTimerWidth;
+  }
+
+  updateScanTimer() {
+    if (!this.scanCurrentTarget || this.finished) return;
+
+    const d = this.getDifficultySettings();
+    const remainingMs = Math.max(0, this.scanCurrentTarget.expiresAt - this.time.now);
+    const ratio = remainingMs / this.scanTargetWindowMs;
+
+    this.scanTimerFill.width = Math.max(0, Math.round(this.scanTimerWidth * ratio));
+    if (ratio <= 0.25) {
+      this.scanTimerFill.setFillStyle(C.danger, 0.95);
+    } else if (ratio <= 0.5) {
+      this.scanTimerFill.setFillStyle(C.gold, 0.95);
+    } else {
+      this.scanTimerFill.setFillStyle(C.cyan, 0.95);
+    }
+
+    if (remainingMs <= 0) {
+      this.combo = 0;
+      this.scanStats.timeouts += 1;
+      this.scanStats.resolved += 1;
+      this.score = Math.max(0, this.score - d.scanTimeoutPenalty);
+      this.updateHud();
+      this.scanFeedbackText.setText("");
+      this.cameras.main.shake(80, 0.0022);
+      this.spawnNextScanTarget();
+    }
+  }
+
+  submitScanEntry() {
+    if (!this.scanCurrentTarget) return;
+    if (!this.scanInput.row || !this.scanInput.col) return;
+
+    const d = this.getDifficultySettings();
+    const enteredRow = Number(this.scanInput.row);
+    const enteredCol = Number(this.scanInput.col);
+    const expectedRow = this.scanCurrentTarget.row;
+    const expectedCol = this.scanCurrentTarget.col;
+    const correct = enteredRow === expectedRow && enteredCol === expectedCol;
+
+    this.scanStats.resolved += 1;
+    if (correct) {
+      const reaction = this.time.now - this.scanCurrentTarget.startedAt;
+      const speedBonus =
+        reaction <= this.scanTargetWindowMs * 0.33
+          ? 70
+          : reaction <= this.scanTargetWindowMs * 0.66
+            ? 42
+            : 20;
+      const award = 118 + speedBonus + this.combo * 7;
+      this.combo += 1;
+      this.scanStats.correct += 1;
+      this.scanStats.bestStreak = Math.max(this.scanStats.bestStreak, this.combo);
+      this.addScore(award, this.scanTargetCell.x, this.scanTargetCell.y, "#4ade80");
+      this.addBurst(this.scanTargetCell.x, this.scanTargetCell.y, C.mint);
+      this.showScanFeedback(`LOGGED R${enteredRow} C${enteredCol}`, "#4ade80");
+    } else {
+      this.combo = 0;
+      this.scanStats.wrong += 1;
+      this.score = Math.max(0, this.score - d.scanWrongPenalty);
+      this.updateHud();
+      this.cameras.main.shake(80, 0.002);
+      this.showScanFeedback(`MISMATCH (R${enteredRow} C${enteredCol})`, "#f87171");
+    }
+
+    this.spawnNextScanTarget();
+  }
+
+  showScanFeedback(message, color) {
+    this.scanFeedbackText.setText(message);
+    this.scanFeedbackText.setColor(color);
+    this.scanFeedbackText.setAlpha(1);
+    this.scanFeedbackTween?.remove();
+    this.scanFeedbackTween = this.tweens.add({
+      targets: this.scanFeedbackText,
+      alpha: 0.12,
+      duration: 760,
+      delay: 260,
+      ease: "Sine.easeOut",
+    });
+  }
+
   // ── Update ─────────────────────────────────────────────────────────────────
 
   update() {
@@ -1426,6 +1723,12 @@ export class FactoryScene extends Phaser.Scene {
         this.score += this.routeStats.completedRounds * 120;
         this.statLabel = `${this.routeStats.completedRounds} boards, ${this.routeStats.hazards} hazards`;
       }
+    }
+
+    if (this.gameConfig.id === "scan") {
+      this.score += this.scanStats.correct * 48;
+      this.score = Math.max(0, this.score - this.scanStats.timeouts * 14);
+      this.statLabel = `${this.scanStats.correct} logged, ${this.scanStats.wrong} wrong, ${this.scanStats.timeouts} timeouts`;
     }
 
     this.score = Math.max(0, Math.round(this.score));

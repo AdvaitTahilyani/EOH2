@@ -79,6 +79,22 @@ export const gameDefinitions = [
     linkText:
       "shorter, cleaner routes help information travel across a chip with fewer delays and errors.",
   },
+  {
+    id: "scan",
+    shortLabel: "Scan",
+    title: "Scan Chain Fault Map",
+    description:
+      "Simulate ATE scan diagnostics by logging failing scan-cell coordinates before each fault window expires.",
+    instructions:
+      "Read the failing coordinate, type row/column values, then press Space to confirm. Fast, accurate logs score best.",
+    metric: "Fault Logging",
+    duration: 34,
+    durationLabel: "34s round",
+    previewVideo: "/videos/routing-preview.mp4",
+    maxScore: 5600,
+    linkText:
+      "accurate defect logging helps engineers isolate failing logic quickly during production test.",
+  },
 ];
 
 export const difficultyLevels = [

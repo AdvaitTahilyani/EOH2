@@ -105,7 +105,7 @@ function LandingHero({ onEnter }) {
             <p className="hero-copy">
               Each station represents a real part of semiconductor validation, like probe
               throughput, power stability, thermal control, core utilization, and signal
-              routing integrity.
+              routing integrity, plus scan-chain fault logging.
             </p>
           </div>
           <div className="landing-facts">
@@ -161,8 +161,7 @@ function IntroScreen({
       <div className="intro-layout">
         <div className="intro-main">
           <div className="eyebrow">Game Lobby</div>
-          <h1>Choose mode and play.</h1>
-          <p className="hero-copy">{gameDefinitions.length} games, one combined score.</p>
+          <h1>Choose your challenge</h1>
 
           <div className="name-row">
             <label className="name-label" htmlFor="playerName">
