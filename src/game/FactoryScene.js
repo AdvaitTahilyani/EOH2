@@ -1446,17 +1446,18 @@ export class FactoryScene extends Phaser.Scene {
       .setStrokeStyle(1, C.border, 1);
 
     this.scanTargetGlow = this.add
-      .rectangle(0, 0, this.scanCellW + 8, this.scanCellH + 8, C.danger, 0.1)
+      .rectangle(0, 0, this.scanCellW + 16, this.scanCellH + 16, C.danger, 0.28)
       .setBlendMode(Phaser.BlendModes.ADD)
       .setVisible(false);
     this.scanTargetCell = this.add
-      .rectangle(0, 0, this.scanCellW - 6, this.scanCellH - 6, C.danger, 0.22)
+      .rectangle(0, 0, this.scanCellW - 6, this.scanCellH - 6, 0xff365f, 0.62)
+      .setStrokeStyle(3, 0xff9cb0, 0.95)
       .setVisible(false);
 
     this.scanPulseTween = this.tweens.add({
       targets: [this.scanTargetGlow, this.scanTargetCell],
-      alpha: { from: 0.1, to: 0.35 },
-      duration: 380,
+      alpha: { from: 0.45, to: 1 },
+      duration: 280,
       yoyo: true,
       repeat: -1,
       paused: true,
