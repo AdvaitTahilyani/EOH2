@@ -611,7 +611,7 @@ export class FactoryScene extends Phaser.Scene {
               this.powerStats.badCatch += 1;
               this.powerState.combo = 0;
               this.powerState.level = clamp(
-                this.powerState.level + spark.value * d.powerBadLevelSpike,
+                this.powerState.level - spark.value * d.powerBadLevelSpike,
                 0,
                 100,
               );
