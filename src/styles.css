@@ -640,6 +640,13 @@ input {
   font-weight: 700;
 }
 
+.import-message {
+  margin: 0 0 8px;
+  color: var(--mint);
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
 .leaderboard-list {
   display: grid;
   gap: 6px;
@@ -654,6 +661,20 @@ input {
   border-radius: 10px;
   background: #13253f;
   padding: 8px;
+}
+
+.leaderboard-player {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.leaderboard-difficulty {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
 }
 
 .leaderboard-row:nth-child(1) {
