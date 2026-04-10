@@ -146,7 +146,7 @@ export class FactoryScene extends Phaser.Scene {
       thermalPassiveReward: id === "easy" ? 0.46 : id === "hard" ? 0.28 : 0.38,
       coreSpawnDelay: id === "easy" ? 980 : id === "hard" ? 620 : 760,
       coreBacklogPenalty: id === "easy" ? 18 : id === "hard" ? 34 : 26,
-      coreMissPenalty: id === "easy" ? 50 : id === "hard" ? 92 : 70,
+      coreMissPenalty: id === "easy" ? 28 : id === "hard" ? 92 : 70,
       // Routing tuning:
       // - Medium now matches the previous Hard profile.
       // - Hard is a new tougher tier with denser, tighter hazard fields.
