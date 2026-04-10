@@ -1000,8 +1000,11 @@ export class FactoryScene extends Phaser.Scene {
       loop: true,
       callback: () => {
         const backlog = this.coreTasks.length;
-        if (backlog >= 4) {
-          this.score = Math.max(0, this.score - backlog * d.coreBacklogPenalty);
+        if (backlog >= 8) {
+          this.score = Math.max(
+            0,
+            this.score - (backlog - 7) * d.coreBacklogPenalty,
+          );
           this.updateHud();
         }
       },
