@@ -131,10 +131,10 @@ function leaderboardDifficultyLabel(entry, fallbackDifficultyLabel) {
   return matchedDifficulty?.label ?? fallbackDifficultyLabel;
 }
 
-function rankForTotal(total, gamesCount) {
-  const averagePerGame = total / Math.max(1, gamesCount);
-  if (averagePerGame >= 125) return "Superchip";
-  if (averagePerGame >= 90) return "Production Ready";
+function rankForTotal(total, maxPossibleScore) {
+  const ratio = total / Math.max(1, maxPossibleScore);
+  if (ratio >= 0.78) return "Superchip";
+  if (ratio >= 0.56) return "Production Ready";
   return "Prototype";
 }
 
@@ -396,7 +396,11 @@ function ResultScreen({ game, result, onNext, nextLabel }) {
 
 function FinalScreen({ results, selectedGames, onRestart }) {
   const total = results.reduce((sum, item) => sum + item.normalized, 0);
-  const rank = rankForTotal(total, selectedGames.length);
+  const maxPossibleScore = selectedGames.reduce(
+    (sum, game) => sum + (game.maxScore ?? 0),
+    0,
+  );
+  const rank = rankForTotal(total, maxPossibleScore);
 
   return (
     <section className="screen-card final-card">
@@ -649,6 +653,13 @@ export default function App() {
     navigate("/lobby");
   };
 
+  const handleExitToHome = () => {
+    setResults([]);
+    setCurrentIndex(0);
+    setSelectedGameIds(gameDefinitions.map((game) => game.id));
+    navigate("/");
+  };
+
   const handleClearLeaderboard = () => {
     if (resetPassword !== "011205") {
       setResetError("Wrong password.");
@@ -721,6 +732,10 @@ export default function App() {
   };
 
   const showProgress = location.pathname === "/play" || location.pathname === "/result";
+  const showExitHomeButton =
+    location.pathname === "/play" ||
+    location.pathname === "/result" ||
+    location.pathname === "/final";
 
   const filteredResults = results.filter((item) => selectedGameIds.includes(item.id));
 
@@ -735,6 +750,15 @@ export default function App() {
       >
         {isFullscreen ? "Exit Fullscreen" : "Fullscreen"}
       </button>
+      {showExitHomeButton ? (
+        <button
+          type="button"
+          className="exit-home-button"
+          onClick={handleExitToHome}
+        >
+          Exit To Home
+        </button>
+      ) : null}
       <input
         ref={importInputRef}
         type="file"

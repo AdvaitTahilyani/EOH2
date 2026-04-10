@@ -1,5 +1,5 @@
 import Phaser from "phaser";
-import { difficultyLevels, medalForScore, normalizeScore } from "./gameDefinitions";
+import { difficultyLevels, medalForScore } from "./gameDefinitions";
 
 const W = 960;
 const H = 640;
@@ -1728,17 +1728,14 @@ export class FactoryScene extends Phaser.Scene {
     }
 
     this.score = Math.max(0, Math.round(this.score));
-    const normalized = normalizeScore(
-      this.score,
-      Math.round(this.gameConfig.maxScore * d.scoreMultiplier),
-    );
+    const normalized = this.score;
     this.time.delayedCall(500, () => {
       this.finishCallback({
         id: this.gameConfig.id,
         shortLabel: this.gameConfig.shortLabel,
         rawScore: this.score,
         normalized,
-        medal: medalForScore(normalized),
+        medal: medalForScore(this.score, this.gameConfig.maxScore),
         statLabel: this.statLabel || this.gameConfig.metric,
         difficultyId: this.difficultyId,
         difficultyLabel: this.difficulty?.label ?? "Medium",

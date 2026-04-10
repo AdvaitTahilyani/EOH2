@@ -118,13 +118,10 @@ export const difficultyLevels = [
   },
 ];
 
-export function normalizeScore(rawScore, maxScore) {
-  return Math.max(0, Math.round((rawScore / maxScore) * 100));
-}
-
-export function medalForScore(normalized) {
-  if (normalized >= 130) return "Legend";
-  if (normalized >= 100) return "Elite";
-  if (normalized >= 70) return "Skilled";
+export function medalForScore(rawScore, maxScore) {
+  const ratio = rawScore / Math.max(1, maxScore);
+  if (ratio >= 0.82) return "Legend";
+  if (ratio >= 0.64) return "Elite";
+  if (ratio >= 0.42) return "Skilled";
   return "Rookie";
 }

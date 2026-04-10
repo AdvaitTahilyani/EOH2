@@ -121,6 +121,28 @@ input {
   outline: none;
 }
 
+.exit-home-button {
+  position: fixed;
+  left: 14px;
+  top: 12px;
+  z-index: 30;
+  border: 2px solid #5f8fcf;
+  border-radius: 9px;
+  background: #1f3351;
+  color: #e6f1ff;
+  font-weight: 700;
+  padding: 8px 12px;
+  cursor: pointer;
+}
+
+.exit-home-button:hover,
+.exit-home-button:focus-visible {
+  background: #2a4670;
+  border-color: #8eb7ed;
+  color: #f3f9ff;
+  outline: none;
+}
+
 .ambient {
   position: fixed;
   z-index: 0;
