@@ -835,7 +835,7 @@ export default function App() {
                 onNext={handleNext}
                 nextLabel={
                   currentIndex === selectedGames.length - 1
-                    ? "See Final Score"
+                    ? "Finish Run"
                     : "Next Game"
                 }
               />

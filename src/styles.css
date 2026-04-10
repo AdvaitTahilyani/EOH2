@@ -88,6 +88,7 @@ input {
   position: relative;
   z-index: 1;
   width: min(1540px, 100%);
+  min-height: 100vh;
   margin: 0 auto;
   padding: 52px 16px 28px;
 }
@@ -794,6 +795,7 @@ input {
   display: grid;
   grid-template-columns: 280px minmax(0, 1fr);
   gap: 12px;
+  align-items: stretch;
 }
 
 .briefing-card {
@@ -827,12 +829,14 @@ input {
 }
 
 .game-card {
+  display: flex;
   padding: 10px;
   background: #12223a;
 }
 
 .game-frame {
-  min-height: 640px;
+  flex: 1;
+  min-height: min(72vh, 820px);
   display: flex;
   justify-content: center;
   align-items: center;
