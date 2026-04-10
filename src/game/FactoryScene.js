@@ -144,6 +144,8 @@ export class FactoryScene extends Phaser.Scene {
       thermalDeadlineMax: id === "easy" ? 3200 : id === "hard" ? 2150 : 2600,
       thermalBurnPenalty: id === "easy" ? 100 : id === "hard" ? 170 : 140,
       thermalPassiveReward: id === "easy" ? 0.46 : id === "hard" ? 0.28 : 0.38,
+      thermalBaseConcurrent: id === "easy" ? 2 : id === "hard" ? 4 : 3,
+      thermalMaxConcurrent: id === "easy" ? 5 : id === "hard" ? 8 : 6,
       coreSpawnDelay: id === "easy" ? 980 : id === "hard" ? 620 : 760,
       coreBacklogPenalty: id === "easy" ? 18 : id === "hard" ? 34 : 26,
       coreMissPenalty: id === "easy" ? 28 : id === "hard" ? 92 : 70,
@@ -815,7 +817,10 @@ export class FactoryScene extends Phaser.Scene {
 
         if (
           this.thermalCells.filter((c) => c.active).length <
-          Math.min(5, 2 + Math.floor((this.gameConfig.duration - this.remaining) / 8))
+          Math.min(
+            d.thermalMaxConcurrent,
+            d.thermalBaseConcurrent + Math.floor((this.gameConfig.duration - this.remaining) / 8),
+          )
         ) {
           activateCell();
         }
@@ -1381,7 +1386,7 @@ export class FactoryScene extends Phaser.Scene {
       });
     });
 
-    this.routeInfo.setText("30s sprint: draw S to E repeatedly • avoid red hazards");
+    this.routeInfo.setText("25s sprint: draw S to E repeatedly • avoid red hazards");
   }
 
   // Scan Chain Fault Map
