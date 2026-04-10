@@ -1415,10 +1415,6 @@ export class FactoryScene extends Phaser.Scene {
       letterSpacing: 1,
     }).setOrigin(0.5);
 
-    this.scanPromptText = this.add.text(44, 112, "ATE FAIL: R- C-", {
-      fontFamily: FONT, fontSize: "24px", fontStyle: "bold", color: "#f87171",
-      stroke: "#050d17", strokeThickness: 3,
-    });
     this.scanInputText = this.add.text(44, 142, "INPUT: R_ C_", {
       fontFamily: FONT, fontSize: "18px", fontStyle: "bold", color: "#e8f4ff",
     });
@@ -1567,7 +1563,6 @@ export class FactoryScene extends Phaser.Scene {
     this.scanTargetCell.setPosition(cx, cy).setVisible(true);
     this.scanPulseTween.restart();
 
-    this.scanPromptText.setText(`ATE FAIL: R${row} C${col}`);
     this.scanInput = { row: "", col: "", field: "row" };
     this.refreshScanInputText();
 

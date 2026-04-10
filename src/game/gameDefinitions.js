@@ -90,7 +90,7 @@ export const gameDefinitions = [
     metric: "Fault Logging",
     duration: 34,
     durationLabel: "34s round",
-    previewVideo: "/videos/routing-preview.mp4",
+    previewVideo: "/videos/scan-preview.mp4",
     maxScore: 5600,
     linkText:
       "accurate defect logging helps engineers isolate failing logic quickly during production test.",
