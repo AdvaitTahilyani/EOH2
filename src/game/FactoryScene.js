@@ -133,7 +133,12 @@ export class FactoryScene extends Phaser.Scene {
       powerSpawnDelay: id === "easy" ? 520 : id === "hard" ? 320 : 420,
       powerDrift: id === "easy" ? 0.9 : id === "hard" ? 1.45 : 1.2,
       powerStableReward: id === "easy" ? 14 : id === "hard" ? 10 : 12,
-      powerOverloadPenalty: id === "easy" ? 70 : id === "hard" ? 120 : 95,
+      powerOverloadPenalty: id === "easy" ? 32 : id === "hard" ? 60 : 46,
+      powerBadCatchPenalty: id === "easy" ? 22 : id === "hard" ? 38 : 30,
+      powerMissGoodPenalty: id === "easy" ? 10 : id === "hard" ? 18 : 14,
+      powerBadLevelSpike: id === "easy" ? 1.15 : id === "hard" ? 1.35 : 1.25,
+      powerEndOverloadPenalty: id === "easy" ? 22 : id === "hard" ? 38 : 30,
+      powerOverloadCooldownMs: id === "easy" ? 1200 : id === "hard" ? 900 : 1050,
       thermalDeadlineMin: id === "easy" ? 2100 : id === "hard" ? 1450 : 1700,
       thermalDeadlineMax: id === "easy" ? 3200 : id === "hard" ? 2150 : 2600,
       thermalBurnPenalty: id === "easy" ? 100 : id === "hard" ? 170 : 140,
@@ -141,8 +146,15 @@ export class FactoryScene extends Phaser.Scene {
       coreSpawnDelay: id === "easy" ? 980 : id === "hard" ? 620 : 760,
       coreBacklogPenalty: id === "easy" ? 18 : id === "hard" ? 34 : 26,
       coreMissPenalty: id === "easy" ? 50 : id === "hard" ? 92 : 70,
-      routingHazardPenalty: id === "easy" ? 85 : id === "hard" ? 145 : 110,
-      routingCompletionBonus: id === "easy" ? 520 : id === "hard" ? 410 : 460,
+      // Routing tuning:
+      // - Medium now matches the previous Hard profile.
+      // - Hard is a new tougher tier with denser, tighter hazard fields.
+      routingHazardPenalty: id === "easy" ? 95 : id === "hard" ? 250 : 200,
+      routingCompletionBonus: id === "easy" ? 520 : id === "hard" ? 280 : 330,
+      routingBaseHazards: id === "easy" ? 4 : id === "hard" ? 20 : 8,
+      routingHazardsPerRound: id === "easy" ? 1 : id === "hard" ? 5.1 : 2,
+      routingHazardRadiusScale: id === "easy" ? 1 : id === "hard" ? 1.42 : 1.28,
+      routingRoundMinScore: id === "easy" ? 240 : id === "hard" ? 40 : 90,
       scoreMultiplier: this.difficulty?.scoreMultiplier ?? 1,
     };
   }
@@ -475,6 +487,7 @@ export class FactoryScene extends Phaser.Scene {
     const d = this.getDifficultySettings();
     this.powerStats = { goodCatch: 0, badCatch: 0, stableTicks: 0, overloads: 0 };
     this.powerState = { level: 52, combo: 0 };
+    this.powerLastOverloadPenaltyAt = Number.NEGATIVE_INFINITY;
 
     // Info panel
     const pg = this.add.graphics();
@@ -591,8 +604,12 @@ export class FactoryScene extends Phaser.Scene {
             } else {
               this.powerStats.badCatch += 1;
               this.powerState.combo = 0;
-              this.powerState.level = clamp(this.powerState.level + spark.value * 1.6, 0, 100);
-              this.score = Math.max(0, this.score - 70);
+              this.powerState.level = clamp(
+                this.powerState.level + spark.value * d.powerBadLevelSpike,
+                0,
+                100,
+              );
+              this.score = Math.max(0, this.score - d.powerBadCatchPenalty);
               this.updateHud();
             }
             Phaser.Utils.Array.Remove(this.powerSparks, spark);
@@ -600,7 +617,7 @@ export class FactoryScene extends Phaser.Scene {
           } else if (spark.y > 620) {
             if (spark.isGood) {
               this.powerState.combo = 0;
-              this.score = Math.max(0, this.score - 24);
+              this.score = Math.max(0, this.score - d.powerMissGoodPenalty);
               this.updateHud();
             }
             Phaser.Utils.Array.Remove(this.powerSparks, spark);
@@ -609,12 +626,15 @@ export class FactoryScene extends Phaser.Scene {
         });
 
         if (this.powerState.level >= 85 || this.powerState.level <= 15) {
-          this.powerStats.overloads += 1;
           this.powerState.combo = 0;
-          this.score = Math.max(0, this.score - d.powerOverloadPenalty);
           this.powerState.level = clamp(this.powerState.level, 8, 92);
-          this.cameras.main.shake(90, 0.003);
-          this.updateHud();
+          if (this.time.now - this.powerLastOverloadPenaltyAt >= d.powerOverloadCooldownMs) {
+            this.powerStats.overloads += 1;
+            this.score = Math.max(0, this.score - d.powerOverloadPenalty);
+            this.powerLastOverloadPenaltyAt = this.time.now;
+            this.cameras.main.shake(90, 0.003);
+            this.updateHud();
+          }
         } else if (this.powerState.level >= 42 && this.powerState.level <= 68) {
           this.powerStats.stableTicks += 1;
           this.score += d.powerStableReward;
@@ -1024,8 +1044,20 @@ export class FactoryScene extends Phaser.Scene {
   // ── Routing Game ───────────────────────────────────────────────────────────
 
   setupRoutingGame() {
+    const d = this.getDifficultySettings();
     this.routeStats = { hazards: 0, completedRounds: 0, pathLength: 0 };
     this.routeRound = 0;
+    this.routeLayouts = [
+      { start: [120, 540], end: [840, 140] },
+      { start: [120, 180], end: [820, 510] },
+      { start: [180, 560], end: [790, 240] },
+      { start: [150, 520], end: [830, 210] },
+      { start: [125, 260], end: [840, 520] },
+      { start: [210, 560], end: [780, 160] },
+      { start: [110, 420], end: [850, 260] },
+      { start: [200, 200], end: [810, 560] },
+    ];
+    this.routeLastLayoutIndex = -1;
     this.routeGraphics = this.add.graphics().setDepth(8);
     this.routeGlowGraphics = this.add.graphics().setDepth(7).setBlendMode(Phaser.BlendModes.ADD);
     this.routeInfo = this.add.text(92, 140, "", {
@@ -1059,7 +1091,9 @@ export class FactoryScene extends Phaser.Scene {
       this.routeHazards.forEach((hazard) => {
         if (Phaser.Math.Distance.Between(pt.x, pt.y, hazard.x0, hazard.y0) <= hazard.radius) {
           this.routeStats.hazards += 1;
+          this.score = Math.max(0, this.score - Math.round(d.routingHazardPenalty * 0.3));
           this.cameras.main.shake(60, 0.002);
+          this.updateHud();
         }
       });
       if (
@@ -1115,7 +1149,7 @@ export class FactoryScene extends Phaser.Scene {
     const routeBonus = Math.round(980 * ratio);
     const completionBonus = d.routingCompletionBonus;
     const hazardPenalty = roundHazards * d.routingHazardPenalty;
-    const roundScore = Math.max(240, completionBonus + routeBonus - hazardPenalty);
+    const roundScore = Math.max(d.routingRoundMinScore, completionBonus + routeBonus - hazardPenalty);
     this.score += roundScore;
     this.updateHud();
 
@@ -1131,18 +1165,13 @@ export class FactoryScene extends Phaser.Scene {
 
     this.routeStats.completedRounds += 1;
 
-    if (this.routeRound < 3) {
-      this.time.delayedCall(700, () => {
-        if (!this.finished) this.startRoutingRound();
-      });
-    } else {
-      this.time.delayedCall(700, () => {
-        if (!this.finished) this.completeGame();
-      });
-    }
+    this.time.delayedCall(380, () => {
+      if (!this.finished) this.startRoutingRound();
+    });
   }
 
   startRoutingRound() {
+    const d = this.getDifficultySettings();
     this.routeRound += 1;
     this.routeFinished = false;
     this.routeDrawing = false;
@@ -1156,7 +1185,7 @@ export class FactoryScene extends Phaser.Scene {
     this.routeBanner?.destroy();
 
     this.routeBanner = this.add
-      .text(W / 2, 94, `BOARD ${this.routeRound} / 3`, {
+      .text(W / 2, 94, `BOARD ${this.routeRound}`, {
         fontFamily: FONT, fontSize: "22px", fontStyle: "bold", color: "#67e8f9",
         stroke: "#050d17", strokeThickness: 3,
         letterSpacing: 3,
@@ -1181,12 +1210,12 @@ export class FactoryScene extends Phaser.Scene {
     }
     this.routeRoundContainer.add(boardG);
 
-    const layouts = [
-      { start: [120, 540], end: [840, 140] },
-      { start: [120, 180], end: [820, 510] },
-      { start: [180, 560], end: [790, 240] },
-    ];
-    const layout = layouts[this.routeRound - 1] ?? layouts[layouts.length - 1];
+    let layoutIndex = Phaser.Math.Between(0, this.routeLayouts.length - 1);
+    if (this.routeLayouts.length > 1 && layoutIndex === this.routeLastLayoutIndex) {
+      layoutIndex = (layoutIndex + 1) % this.routeLayouts.length;
+    }
+    this.routeLastLayoutIndex = layoutIndex;
+    const layout = this.routeLayouts[layoutIndex];
     this.routeStart = new Phaser.Math.Vector2(layout.start[0], layout.start[1]);
     this.routeEnd = new Phaser.Math.Vector2(layout.end[0], layout.end[1]);
 
@@ -1234,11 +1263,71 @@ export class FactoryScene extends Phaser.Scene {
     this.routeRoundContainer.add(endLabel);
 
     // Hazard clouds
-    const hazardCount = 4 + this.routeRound;
-    for (let i = 0; i < hazardCount; i++) {
-      const hx = Phaser.Math.Between(220, 760);
-      const hy = Phaser.Math.Between(180, 540);
-      const radius = Phaser.Math.Between(32, 58);
+    const hazardCount = Math.min(
+      this.difficultyId === "hard" ? 54 : 24,
+      Math.round(d.routingBaseHazards + this.routeRound * d.routingHazardsPerRound),
+    );
+    const useSpreadPlacement =
+      this.difficultyId === "medium" || this.difficultyId === "hard";
+    const gapBuffer = this.difficultyId === "hard" ? 14 : this.difficultyId === "medium" ? 30 : 10;
+    const hazardSpecs = [];
+    const canPlaceHazard = (x, y, radius, extraGap = gapBuffer) => {
+      const marginToNodes = radius + 58;
+      if (
+        Phaser.Math.Distance.Between(x, y, this.routeStart.x, this.routeStart.y) < marginToNodes ||
+        Phaser.Math.Distance.Between(x, y, this.routeEnd.x, this.routeEnd.y) < marginToNodes
+      ) {
+        return false;
+      }
+
+      return hazardSpecs.every((existing) => {
+        const minDistance = radius + existing.radius + extraGap;
+        return Phaser.Math.Distance.Between(x, y, existing.x, existing.y) >= minDistance;
+      });
+    };
+
+    const tryAddHazard = (x, y, radius, extraGap = gapBuffer) => {
+      if (!canPlaceHazard(x, y, radius, extraGap)) return false;
+      hazardSpecs.push({ x, y, radius });
+      return true;
+    };
+
+    if (useSpreadPlacement) {
+      const zones = Phaser.Utils.Array.Shuffle([
+        [220, 190], [420, 190], [620, 190], [760, 240],
+        [180, 300], [360, 320], [560, 320], [760, 360],
+        [220, 460], [420, 470], [620, 470], [760, 520],
+      ]);
+
+      zones.forEach(([zx, zy]) => {
+        if (hazardSpecs.length >= hazardCount) return;
+        const radius = Math.round(Phaser.Math.Between(32, 58) * d.routingHazardRadiusScale);
+        const hx = clamp(zx + Phaser.Math.Between(-55, 55), 160, 800);
+        const hy = clamp(zy + Phaser.Math.Between(-50, 50), 180, 560);
+        tryAddHazard(hx, hy, radius);
+      });
+    }
+
+    let attempts = 0;
+    while (hazardSpecs.length < hazardCount && attempts < 900) {
+      attempts += 1;
+      const radius = Math.round(Phaser.Math.Between(32, 58) * d.routingHazardRadiusScale);
+      const hx = Phaser.Math.Between(160, 800);
+      const hy = Phaser.Math.Between(180, 560);
+      tryAddHazard(hx, hy, radius);
+    }
+
+    // If placement is still short, relax spacing a little so we still hit target count.
+    attempts = 0;
+    while (hazardSpecs.length < hazardCount && attempts < 600) {
+      attempts += 1;
+      const radius = Math.round(Phaser.Math.Between(32, 58) * d.routingHazardRadiusScale);
+      const hx = Phaser.Math.Between(160, 800);
+      const hy = Phaser.Math.Between(180, 560);
+      tryAddHazard(hx, hy, radius, Math.max(4, gapBuffer - 12));
+    }
+
+    hazardSpecs.forEach(({ x: hx, y: hy, radius }, i) => {
 
       // Outer glow
       const hOuter = this.add.circle(hx, hy, radius + 10, C.danger, 0.08)
@@ -1263,9 +1352,9 @@ export class FactoryScene extends Phaser.Scene {
         yoyo: true,
         repeat: -1,
       });
-    }
+    });
 
-    this.routeInfo.setText("Draw a path from S to E • Avoid red hazards");
+    this.routeInfo.setText("30s sprint: draw S to E repeatedly • avoid red hazards");
   }
 
   // ── Update ─────────────────────────────────────────────────────────────────
@@ -1310,7 +1399,11 @@ export class FactoryScene extends Phaser.Scene {
     }
 
     if (this.gameConfig.id === "power") {
-      this.score += Math.max(0, this.powerStats.stableTicks * 4 - this.powerStats.overloads * 80);
+      this.score += Math.max(
+        0,
+        this.powerStats.stableTicks * 4 -
+          this.powerStats.overloads * d.powerEndOverloadPenalty,
+      );
       this.statLabel = `${this.powerStats.goodCatch} clean catches, ${this.powerStats.overloads} overloads`;
     }
 
@@ -1331,7 +1424,7 @@ export class FactoryScene extends Phaser.Scene {
         this.statLabel = "No complete routes";
       } else {
         this.score += this.routeStats.completedRounds * 120;
-        this.statLabel = `${this.routeStats.completedRounds}/3 boards, ${this.routeStats.hazards} hazards`;
+        this.statLabel = `${this.routeStats.completedRounds} boards, ${this.routeStats.hazards} hazards`;
       }
     }
 

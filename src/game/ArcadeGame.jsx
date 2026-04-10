@@ -1,19 +1,23 @@
 import { useEffect, useRef, useState } from "react";
 import Phaser from "phaser";
-import { difficultyLevels } from "./gameDefinitions";
 import { FactoryScene } from "./FactoryScene";
 
 export function ArcadeGame({ game, difficulty, onComplete }) {
   const hostRef = useRef(null);
   const gameRef = useRef(null);
   const sceneRef = useRef(null);
+  const previewVideoRef = useRef(null);
   const [readyToStart, setReadyToStart] = useState(false);
+  const [previewReady, setPreviewReady] = useState(false);
 
   useEffect(() => {
     setReadyToStart(false);
+    setPreviewReady(false);
   }, [game]);
 
   useEffect(() => {
+    if (!readyToStart || !hostRef.current) return;
+
     const scene = new FactoryScene();
     sceneRef.current = scene;
 
@@ -53,7 +57,7 @@ export function ArcadeGame({ game, difficulty, onComplete }) {
       gameRef.current = null;
       sceneRef.current = null;
     };
-  }, []);
+  }, [readyToStart]);
 
   useEffect(() => {
     if (!readyToStart || !sceneRef.current) return;
@@ -61,8 +65,27 @@ export function ArcadeGame({ game, difficulty, onComplete }) {
     gameRef.current?.scale.refresh();
   }, [difficulty, game, onComplete, readyToStart]);
 
-  const difficultyLabel =
-    difficultyLevels.find((level) => level.id === difficulty)?.label ?? "Medium";
+  useEffect(() => {
+    const video = previewVideoRef.current;
+    if (!video) return;
+    setPreviewReady(false);
+    video.currentTime = 0;
+    video.load();
+    const playPromise = video.play();
+    if (playPromise?.catch) {
+      playPromise.catch(() => {});
+    }
+  }, [game.id]);
+
+  const handlePreviewCanPlay = () => {
+    setPreviewReady(true);
+    const video = previewVideoRef.current;
+    if (!video || !video.paused) return;
+    const playPromise = video.play();
+    if (playPromise?.catch) {
+      playPromise.catch(() => {});
+    }
+  };
 
   return (
     <section className="screen-card game-card">
@@ -71,13 +94,24 @@ export function ArcadeGame({ game, difficulty, onComplete }) {
         <div className="game-splash">
           <div className="game-splash-card">
             <div className="eyebrow">How To Play</div>
+            <div className="game-splash-video-wrap">
+              <video
+                ref={previewVideoRef}
+                className="game-splash-video"
+                src={game.previewVideo}
+                muted
+                autoPlay
+                loop
+                playsInline
+                preload="metadata"
+                onCanPlay={handlePreviewCanPlay}
+              />
+              {!previewReady ? (
+                <div className="game-splash-video-loading">Buffering preview...</div>
+              ) : null}
+            </div>
             <h3>{game.title}</h3>
             <p>{game.description}</p>
-            <div className="game-splash-meta">
-              <span>{game.metric}</span>
-              <span>{game.durationLabel}</span>
-              <span>{difficultyLabel}</span>
-            </div>
             <p className="game-splash-rules">{game.instructions}</p>
             <button className="primary-button" onClick={() => setReadyToStart(true)}>
               Start Game
