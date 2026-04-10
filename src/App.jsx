@@ -653,11 +653,11 @@ export default function App() {
     navigate("/lobby");
   };
 
-  const handleExitToHome = () => {
+  const handleExitToLobby = () => {
     setResults([]);
     setCurrentIndex(0);
     setSelectedGameIds(gameDefinitions.map((game) => game.id));
-    navigate("/");
+    navigate("/lobby");
   };
 
   const handleClearLeaderboard = () => {
@@ -754,9 +754,9 @@ export default function App() {
         <button
           type="button"
           className="exit-home-button"
-          onClick={handleExitToHome}
+          onClick={handleExitToLobby}
         >
-          Exit To Home
+          Exit To Lobby
         </button>
       ) : null}
       <input
