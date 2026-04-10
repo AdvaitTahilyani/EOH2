@@ -111,8 +111,16 @@ export function ArcadeGame({ game, difficulty, onComplete }) {
               ) : null}
             </div>
             <h3>{game.title}</h3>
-            <p>{game.description}</p>
-            <p className="game-splash-rules">{game.instructions}</p>
+            {game.id === "speed" ? (
+              <p className="game-splash-rules">
+                {game.description} {game.instructions}
+              </p>
+            ) : (
+              <>
+                <p>{game.description}</p>
+                <p className="game-splash-rules">{game.instructions}</p>
+              </>
+            )}
             <button className="primary-button" onClick={() => setReadyToStart(true)}>
               Start Game
             </button>
