@@ -99,13 +99,12 @@ function LandingHero({ onEnter }) {
           </h1>
           <div className="landing-intro">
             <p className="hero-copy hero-copy-lead">
-              A browser arcade game where you run a virtual chip factory through{" "}
-              {gameDefinitions.length} fast mini-games.
+              You are the chip, and your goal is to survive{" "}
+              {gameDefinitions.length} fast validation and stress-test stations.
             </p>
             <p className="hero-copy">
-              Each station represents a real part of semiconductor validation, like probe
-              throughput, power stability, thermal control, core utilization, and signal
-              routing integrity, plus scan-chain fault logging.
+              Push through probe timing, power integrity, thermal load, core pressure,
+              signal routing, and scan-chain diagnostics to prove you are production ready.
             </p>
           </div>
           <div className="landing-facts">
@@ -412,6 +411,14 @@ export default function App() {
       document.removeEventListener("fullscreenchange", handleFullscreenChange);
     };
   }, []);
+
+  useEffect(() => {
+    const shouldLockScroll = location.pathname === "/play";
+    document.body.classList.toggle("no-scroll", shouldLockScroll);
+    return () => {
+      document.body.classList.remove("no-scroll");
+    };
+  }, [location.pathname]);
 
   useEffect(() => {
     const root = appRef.current;

@@ -130,7 +130,7 @@ export class FactoryScene extends Phaser.Scene {
       speedSpawnerDelay: id === "easy" ? 620 : id === "hard" ? 370 : 470,
       speedHitWindow: id === "easy" ? 64 : id === "hard" ? 38 : 48,
       speedPerfectWindow: id === "easy" ? 22 : id === "hard" ? 12 : 16,
-      speedTravelStep: id === "easy" ? 4.1 : id === "hard" ? 5.5 : 4.8,
+      speedTravelStep: id === "easy" ? 2.7 : id === "hard" ? 5.5 : 4.8,
       powerSpawnDelay: id === "easy" ? 520 : id === "hard" ? 320 : 420,
       powerDrift: id === "easy" ? 0.9 : id === "hard" ? 1.45 : 1.2,
       powerStableReward: id === "easy" ? 14 : id === "hard" ? 10 : 12,

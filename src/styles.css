@@ -40,6 +40,10 @@ body {
     var(--bg);
 }
 
+body.no-scroll {
+  overflow: hidden;
+}
+
 body::before {
   content: "";
   position: fixed;
