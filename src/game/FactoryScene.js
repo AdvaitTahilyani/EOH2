@@ -429,7 +429,25 @@ export class FactoryScene extends Phaser.Scene {
       },
     });
 
+    const speedKeyHandlers = [
+      ["keydown-ONE", 0],
+      ["keydown-TWO", 1],
+      ["keydown-THREE", 2],
+      ["keydown-A", 0],
+      ["keydown-S", 1],
+      ["keydown-D", 2],
+    ].map(([eventName, laneIndex]) => {
+      const handler = () => this.hitSpeedLane(laneIndex);
+      this.input.keyboard?.on(eventName, handler);
+      return [eventName, handler];
+    });
+
     this.activeCleanup.push(() => this.speedSpawner?.destroy());
+    this.activeCleanup.push(() => {
+      speedKeyHandlers.forEach(([eventName, handler]) => {
+        this.input.keyboard?.off(eventName, handler);
+      });
+    });
   }
 
   hitSpeedLane(laneIndex) {
@@ -580,12 +598,12 @@ export class FactoryScene extends Phaser.Scene {
       loop: true,
       callback: () => {
         const laneX = Phaser.Utils.Array.GetRandom(lanes);
-        const isGood = Phaser.Math.Between(0, 100) > 35;
+        const isGood = Phaser.Math.Between(0, 100) > 28;
         const lc = isGood ? C.mint : C.danger;
 
         const spark = this.add.circle(laneX, 230, 16, lc, 0.92);
         spark.isGood = isGood;
-        spark.value = isGood ? Phaser.Math.Between(7, 12) : Phaser.Math.Between(10, 16);
+        spark.value = isGood ? Phaser.Math.Between(10, 15) : Phaser.Math.Between(10, 16);
         this.powerSparks.push(spark);
       },
     });
